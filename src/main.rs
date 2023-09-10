@@ -1,13 +1,17 @@
-use std::path::PathBuf;
+use std::path::{PathBuf};
 use std::{env, fs, io};
 use std::io::ErrorKind;
 
 fn main() -> io::Result<()> {
     let path = get_dir_path()?;
-    let entries = get_dir_contents(path)?;
+    let entries = get_dir_contents(&path)?;
 
+    println!("{}", format_dir_name(&path));
     for entry in entries.iter() {
-        println!("{}", entry.display());
+        let mut prefix = "├──";
+        if entry == entries.last().unwrap() { prefix = "└──" }
+
+        println!("{prefix}{}", format_dir_name(entry));
     }
 
     Ok(())
@@ -29,7 +33,7 @@ fn get_dir_path() -> Result<PathBuf, io::Error> {
     return Ok(path);
 }
 
-fn get_dir_contents(dir: PathBuf) -> Result<Vec<PathBuf>, io::Error> {
+fn get_dir_contents(dir: &PathBuf) -> Result<Vec<PathBuf>, io::Error> {
     let mut entries = fs::read_dir(dir)?
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, io::Error>>()?;
@@ -37,4 +41,13 @@ fn get_dir_contents(dir: PathBuf) -> Result<Vec<PathBuf>, io::Error> {
     entries.sort();
 
     return Ok(entries);
+}
+
+fn format_dir_name(dir: &PathBuf) -> &str {
+   return dir.components()
+       .last()
+       .unwrap()
+       .as_os_str()
+       .to_str()
+       .unwrap();
 }
