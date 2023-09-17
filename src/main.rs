@@ -1,17 +1,34 @@
-use std::path::{PathBuf};
-use std::{env, fs, io};
 use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
+use std::{env, fs, io};
+
+const PRFX: &str = "├──";
+const PRFX_LAST: &str = "└──";
 
 fn main() -> io::Result<()> {
-    let path = get_dir_path()?;
-    let entries = get_dir_contents(&path)?;
+    let dir = get_dir_path()?;
+    let indent = "";
 
-    println!("{}", format_dir_name(&path));
+    iterate_dir(&dir, &indent)
+}
+
+// @TODO Fix prefix for the first item in a directory
+fn iterate_dir(dir: &PathBuf, indent: &str) -> io::Result<()> {
+    let entries = get_dir_contents(&dir)?;
+    println!("{indent}{}", format_dir_name(dir.as_path()));
+
     for entry in entries.iter() {
-        let mut prefix = "├──";
-        if entry == entries.last().unwrap() { prefix = "└──" }
+        let mut prefix = PRFX;
+        if entry == entries.last().unwrap() {
+            prefix = PRFX_LAST;
+        }
 
-        println!("{prefix}{}", format_dir_name(entry));
+        if entry.is_dir() {
+            let new_indent = String::from(indent) + "│  ";
+            iterate_dir(&entry, &new_indent)?;
+        }
+
+        println!("{indent}{prefix}{}", format_dir_name(entry.as_path()));
     }
 
     Ok(())
@@ -22,15 +39,15 @@ fn get_dir_path() -> Result<PathBuf, io::Error> {
     args.remove(0);
 
     let path = match args.last() {
-        Some(p) => { PathBuf::from(p) }
-        None => { env::current_dir()? }
+        Some(p) => PathBuf::from(p),
+        None => env::current_dir()?,
     };
 
-    if path.is_dir() == false {
+    if !path.is_dir() {
         return Err(io::Error::from(ErrorKind::InvalidInput));
     }
 
-    return Ok(path);
+    Ok(path)
 }
 
 fn get_dir_contents(dir: &PathBuf) -> Result<Vec<PathBuf>, io::Error> {
@@ -40,14 +57,15 @@ fn get_dir_contents(dir: &PathBuf) -> Result<Vec<PathBuf>, io::Error> {
 
     entries.sort();
 
-    return Ok(entries);
+    Ok(entries)
 }
 
-fn format_dir_name(dir: &PathBuf) -> &str {
-   return dir.components()
-       .last()
-       .unwrap()
-       .as_os_str()
-       .to_str()
-       .unwrap();
+fn format_dir_name(dir: &Path) -> &str {
+    return dir
+        .components()
+        .last()
+        .unwrap()
+        .as_os_str()
+        .to_str()
+        .unwrap();
 }
